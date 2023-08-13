@@ -1,6 +1,10 @@
 use std::collections::HashMap;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
+
+mod resp;
+
+use resp::Resp;
 
 struct Memory {
     storage: HashMap<String, String>,
@@ -39,7 +43,8 @@ fn main() {
                 let message = String::from_utf8(buf).unwrap();
                 let commands = parse_message(message);
                 for command in commands {
-                    handle_command(command, &mut storage, &mut stream);
+                    let result = handle_command(command, &mut storage, &mut stream);
+                    println!("{result:?}");
                 }
             }
             Err(err) => {
@@ -65,35 +70,35 @@ struct Command {
     args: Vec<String>,
 }
 
-fn handle_command(command: Command, memory: &mut Memory, stream: &mut TcpStream) {
+fn handle_command(
+    command: Command,
+    memory: &mut Memory,
+    stream: &mut TcpStream,
+) -> io::Result<usize> {
     let result = match command.keyword {
-        Keyword::Ping => stream.write("+PONG\r\n".as_bytes()),
-        Keyword::Echo => {
-            let response = command.args.join(" ");
-            let len = response.len();
-            stream.write(format!("${len}\r\n{response}\r\n").as_bytes())
-        }
+        Keyword::Ping => Resp::SimpleString("PONG".to_string()),
+        Keyword::Echo => Resp::BulkString(command.args.join(" ")),
         Keyword::Get => {
             if let [key, ..] = command.args.as_slice() {
                 match memory.get(key) {
-                    Some(val) => stream.write(format!("${}\r\n{}\r\n", val.len(), val).as_bytes()),
-                    None => stream.write("$-1\r\n".as_bytes()),
+                    Some(val) => Resp::BulkString(val.to_owned()),
+                    None => Resp::Nil,
                 }
             } else {
-                stream.write("-Missing argument to GET command\r\n".as_bytes())
+                Resp::Error("Missing argument to command GET".to_string())
             }
         }
-        Keyword::Unknown => stream.write("-Unknown command\r\n".as_bytes()),
+        Keyword::Unknown => Resp::Error("Unknown command".to_string()),
         Keyword::Set => {
             if let [key, val, ..] = command.args.as_slice() {
                 memory.set(key.to_owned(), val.to_owned());
-                stream.write("+OK\r\n".as_bytes())
+                Resp::SimpleString("OK".to_string())
             } else {
-                stream.write("-Not enough arguments to SET command.\r\n".as_bytes())
+                Resp::Error("Not enough arguments to SET command".to_string())
             }
         }
     };
-    println!("RESULT: {result:?}");
+    stream.write(&result.as_bytes())
 }
 
 fn parse_message(message: String) -> Vec<Command> {
