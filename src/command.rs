@@ -4,7 +4,7 @@ pub struct Command {
     pub args: Vec<String>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Keyword {
     Ping,
     Echo,
@@ -65,8 +65,60 @@ pub fn parse_message(message: String) -> Vec<Command> {
 
             arr_len -= 1;
         }
+
+        // reset array and keyword settings is case of another command
+        // in pipeline
+        matched_keyword = false;
+        arr_len = 1;
         let command = Command { keyword, args };
         commands.push(command);
     }
     commands
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_message_no_args() {
+        let input = "*1\r\n$4\r\nPING\r\n".to_string();
+        let commands = parse_message(input);
+
+        assert_eq!(commands.len(), 1);
+        assert!(matches!(
+            commands.first().unwrap(),
+            Command {
+                keyword: Keyword::Ping,
+                args: a
+            } if a.is_empty()
+        ));
+    }
+
+    #[test]
+    fn parse_message_with_args() {
+        let input = "*3\r\n$4\r\nECHO\r\n$3\r\nfoo\r\n$3\r\nbar\r\n".to_string();
+        let commands = parse_message(input);
+
+        assert_eq!(commands.len(), 1);
+        assert!(matches!(
+            commands.first().unwrap(),
+            Command {
+                keyword: Keyword::Echo,
+                args: a
+            } if a.len() == 2
+        ));
+    }
+
+    #[test]
+    fn parse_multiple_messages() {
+        // two PING commands
+        let input = "*1\r\n$4\r\nPING\r\n*1\r\n$4\r\nPING\r\n".to_string();
+        let commands = parse_message(input);
+
+        println!("{commands:?}");
+        assert_eq!(commands.len(), 2);
+        assert_eq!(commands[0].keyword, Keyword::Ping);
+        assert_eq!(commands[1].keyword, Keyword::Ping);
+    }
 }

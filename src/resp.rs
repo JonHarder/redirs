@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum Resp {
     SimpleString(String),
     BulkString(String),
