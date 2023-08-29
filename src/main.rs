@@ -19,7 +19,7 @@ enum LogLevel {
 impl Display for LogLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            LogLevel::Info => "INFO ",
+            LogLevel::Info => "INFO",
             LogLevel::Error => "ERROR",
         };
         write!(f, "{s}")
@@ -28,7 +28,8 @@ impl Display for LogLevel {
 
 fn log(level: LogLevel, msg: String) {
     let now = Utc::now();
-    eprintln!("{now} [{level}] - {msg}", now = now.to_rfc3339());
+    let level = format!("[{level}]");
+    eprintln!("{now} {level: <7} - {msg}", now = now.to_rfc3339());
 }
 
 fn main() {
