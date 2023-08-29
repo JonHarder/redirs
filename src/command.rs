@@ -1,5 +1,7 @@
 mod state;
 
+use std::error::Error;
+
 use crate::command::state::State;
 
 #[derive(Debug)]
@@ -29,7 +31,7 @@ impl From<&str> for Keyword {
     }
 }
 
-pub fn parse_message(message: String) -> Vec<Command> {
+pub fn parse_message(message: String) -> Result<Vec<Command>, Box<dyn Error>> {
     let mut chunks = message.split("\r\n");
     let mut arr_len = 1;
     let mut commands = vec![];
@@ -73,10 +75,10 @@ pub fn parse_message(message: String) -> Vec<Command> {
         // in pipeline
         arr_len = 1;
 
-        let command = state.as_command().unwrap();
+        let command = state.as_command()?;
         commands.push(command);
     }
-    commands
+    Ok(commands)
 }
 
 #[cfg(test)]
@@ -86,7 +88,7 @@ mod test {
     #[test]
     fn parse_message_no_args() {
         let input = "*1\r\n$4\r\nPING\r\n".to_string();
-        let commands = parse_message(input);
+        let commands = parse_message(input).expect("to parse at least one command");
 
         assert_eq!(commands.len(), 1);
         assert!(matches!(
@@ -101,7 +103,7 @@ mod test {
     #[test]
     fn parse_message_with_args() {
         let input = "*3\r\n$4\r\nECHO\r\n$3\r\nfoo\r\n$3\r\nbar\r\n".to_string();
-        let commands = parse_message(input);
+        let commands = parse_message(input).expect("to parse at least one command");
 
         assert_eq!(commands.len(), 1);
         assert!(matches!(
@@ -117,9 +119,8 @@ mod test {
     fn parse_multiple_messages() {
         // two PING commands
         let input = "*1\r\n$4\r\nPING\r\n*1\r\n$4\r\nPING\r\n".to_string();
-        let commands = parse_message(input);
+        let commands = parse_message(input).expect("to parse at least one command");
 
-        println!("{commands:?}");
         assert_eq!(commands.len(), 2);
         assert_eq!(commands[0].keyword, Keyword::Ping);
         assert_eq!(commands[1].keyword, Keyword::Ping);

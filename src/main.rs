@@ -46,7 +46,7 @@ fn main() {
                     break;
                 }
                 let message = String::from_utf8(buf).unwrap();
-                let commands = command::parse_message(message);
+                let commands = command::parse_message(message).unwrap();
                 for command in commands {
                     log(
                         LogLevel::Info,
@@ -63,7 +63,7 @@ fn main() {
                     );
                     match &result {
                         resp::Resp::Error(e) => log(LogLevel::Error, e.to_string()),
-                        r => log(LogLevel::Info, format!("{r:?}")),
+                        r => log(LogLevel::Info, format!("Result: {r:?}")),
                     }
                     stream.write_all(&result.as_bytes()).unwrap();
                 }
