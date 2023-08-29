@@ -13,15 +13,25 @@ pub enum Keyword {
     Unknown,
 }
 
+enum ParseState {
+    ParsingCommand,
+    ParsingArgs(Keyword, Vec<String>),
+}
+
+struct CommandParseState {
+    commands: Vec<Command>,
+    state: ParseState,
+}
+
 pub fn parse_message(message: String) -> Vec<Command> {
     let mut chunks = message.split("\r\n");
-    let mut commands: Vec<Command> = vec![];
-    let mut matched_keyword = false;
+    let mut state = CommandParseState {
+        commands: vec![],
+        state: ParseState::ParsingCommand,
+    };
     let mut arr_len = 1;
     loop {
         let mut word: Option<&str> = None;
-        let mut args = vec![];
-        let mut keyword = Keyword::Unknown;
         let mut chunk = match chunks.next() {
             Some(chunk) => chunk,
             None => break,
@@ -45,17 +55,20 @@ pub fn parse_message(message: String) -> Vec<Command> {
             }
 
             if let Some(word) = word {
-                if !matched_keyword {
-                    keyword = match word.to_uppercase().as_str() {
-                        "PING" => Keyword::Ping,
-                        "ECHO" => Keyword::Echo,
-                        "GET" => Keyword::Get,
-                        "SET" => Keyword::Set,
-                        _ => Keyword::Unknown,
-                    };
-                    matched_keyword = true;
-                } else {
-                    args.push(word.to_string());
+                match state.state {
+                    ParseState::ParsingCommand => {
+                        let command = match word.to_uppercase().as_str() {
+                            "PING" => Keyword::Ping,
+                            "ECHO" => Keyword::Echo,
+                            "GET" => Keyword::Get,
+                            "SET" => Keyword::Set,
+                            _ => Keyword::Unknown,
+                        };
+                        state.state = ParseState::ParsingArgs(command, vec![]);
+                    }
+                    ParseState::ParsingArgs(_, ref mut args) => {
+                        args.push(word.to_string());
+                    }
                 }
             }
             chunk = match chunks.next() {
@@ -68,12 +81,15 @@ pub fn parse_message(message: String) -> Vec<Command> {
 
         // reset array and keyword settings is case of another command
         // in pipeline
-        matched_keyword = false;
         arr_len = 1;
-        let command = Command { keyword, args };
-        commands.push(command);
+        if let ParseState::ParsingArgs(keyword, ref args) = state.state {
+            state.commands.push(Command {
+                keyword,
+                args: args.clone(),
+            });
+        }
     }
-    commands
+    state.commands
 }
 
 #[cfg(test)]

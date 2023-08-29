@@ -19,7 +19,7 @@ enum LogLevel {
 impl Display for LogLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            LogLevel::Info => "INFO",
+            LogLevel::Info => "INFO ",
             LogLevel::Error => "ERROR",
         };
         write!(f, "{s}")
@@ -35,7 +35,7 @@ fn main() {
     let binding = SocketAddr::from(([127, 0, 0, 1], 6379));
     let listener = TcpListener::bind(binding).unwrap();
     let mut server = Server::new();
-    println!("Server started at {binding}");
+    log(LogLevel::Info, format!("Server started at {binding}"));
     for stream in listener.incoming() {
         match stream {
             Ok(mut stream) => {
