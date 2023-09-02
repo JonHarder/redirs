@@ -21,7 +21,21 @@ impl Server {
         self.memory.insert(key.to_owned(), val);
     }
 
-    pub fn handle_command(&mut self, command: Command) -> Resp {
+    pub fn handle_command_mut(&mut self, command: Command) -> Resp {
+        match command.keyword {
+            Keyword::Set => {
+                if let [key, val, ..] = command.args.as_slice() {
+                    self.set(key, val.to_owned());
+                    Resp::SimpleString("OK".to_string())
+                } else {
+                    Resp::Error("Not enough arguments to SET command".to_string())
+                }
+            }
+            _ => panic!("keyword not handled by 'handle_command_mut'"),
+        }
+    }
+
+    pub fn handle_command(&self, command: Command) -> Resp {
         match command.keyword {
             Keyword::Ping => Resp::SimpleString("PONG".to_string()),
             Keyword::Echo => Resp::BulkString(command.args.join(" ")),
@@ -36,14 +50,7 @@ impl Server {
                 }
             }
             Keyword::Unknown => Resp::Error("Unknown command".to_string()),
-            Keyword::Set => {
-                if let [key, val, ..] = command.args.as_slice() {
-                    self.set(key, val.to_owned());
-                    Resp::SimpleString("OK".to_string())
-                } else {
-                    Resp::Error("Not enough arguments to SET command".to_string())
-                }
-            }
+            _ => panic!("keyword not covered by 'handle_command'"),
         }
     }
 }

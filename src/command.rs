@@ -8,6 +8,7 @@ use crate::command::state::State;
 pub struct Command {
     pub keyword: Keyword,
     pub args: Vec<String>,
+    pub mutable: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -17,6 +18,18 @@ pub enum Keyword {
     Get,
     Set,
     Unknown,
+}
+
+impl Keyword {
+    pub fn is_mutable(&self) -> bool {
+        match &self {
+            Keyword::Ping => false,
+            Keyword::Echo => false,
+            Keyword::Get => false,
+            Keyword::Set => true,
+            Keyword::Unknown => false,
+        }
+    }
 }
 
 impl From<&str> for Keyword {
@@ -95,7 +108,8 @@ mod test {
             commands.first().unwrap(),
             Command {
                 keyword: Keyword::Ping,
-                args: a
+                args: a,
+                mutable: false,
             } if a.is_empty()
         ));
     }
@@ -110,7 +124,8 @@ mod test {
             commands.first().unwrap(),
             Command {
                 keyword: Keyword::Echo,
-                args: a
+                args: a,
+                mutable: false,
             } if a.len() == 2
         ));
     }

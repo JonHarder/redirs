@@ -35,6 +35,7 @@ impl State {
             ParseState::ParsingArgs(keyword, args) => Ok(Command {
                 keyword: *keyword,
                 args: args.to_vec(),
+                mutable: keyword.is_mutable(),
             }),
         }
     }

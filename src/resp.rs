@@ -3,6 +3,7 @@ pub enum Resp {
     SimpleString(String),
     BulkString(String),
     Error(String),
+    #[allow(dead_code)]
     Integer(i64),
     Nil,
 }
