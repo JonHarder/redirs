@@ -32,8 +32,7 @@ impl Display for LogLevel {
 fn log(level: LogLevel, msg: &str) {
     let now = Utc::now();
     let level = format!("[{level}]");
-    let level = level.as_str();
-    eprintln!("{now} {level: <7} - {msg}", now = now.to_rfc3339());
+    eprintln!("{now} {level} - {msg}", now = now.to_rfc3339());
 }
 
 fn handle_stream(stream: &mut TcpStream, server: &RwLock<Server>) {
@@ -50,7 +49,8 @@ fn handle_stream(stream: &mut TcpStream, server: &RwLock<Server>) {
             format!(
                 "Processing command: {:?}, args: {:?}",
                 command.keyword, command.args
-            ).as_str(),
+            )
+            .as_str(),
         );
         let now = Instant::now();
         let result = if command.mutable {
@@ -79,14 +79,19 @@ fn main() {
     let listener = TcpListener::bind(binding).unwrap();
     let server = Arc::new(RwLock::new(Server::new()));
     let mut threads = vec![];
-    log(LogLevel::Info, format!("Server started at {binding}").as_str());
+    log(
+        LogLevel::Info,
+        format!("Server started at {binding}").as_str(),
+    );
     for stream in listener.incoming() {
+        log(LogLevel::Debug, "new incoming request");
         match stream {
             Ok(mut stream) => {
                 let server = Arc::clone(&server);
-                let handle = std::thread::spawn(move || {
+                let handle = std::thread::spawn(move || loop {
                     handle_stream(&mut stream, &server);
                 });
+                log(LogLevel::Debug, "spawned new thread to handle request");
                 threads.push(handle);
             }
             Err(err) => {
@@ -94,6 +99,7 @@ fn main() {
                 break;
             }
         }
+        log(LogLevel::Debug, "client closed the connection");
     }
     for thread in threads {
         thread.join().unwrap();
